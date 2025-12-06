@@ -1,13 +1,13 @@
 /**
- * Trading Strategy Hub - Main Application
- * Arquitectura modular y extensible para gestión de estrategias de trading
+ * Main Application - Módulo principal que une todos los componentes
+ * Responsabilidad: Coordinar entre DOM Manager, Portfolio Calculator y otros módulos
  */
 
 // Configuración principal de la aplicación
-const CONFIG = {
-    version: '1.0.0',
+const APP_CONFIG = {
+    version: '2.0.0',
     apiEndpoint: '/api',
-    updateInterval: 30000, // 30 segundos
+    updateInterval: 60000, // 1 minuto
     animationDuration: 300,
     chartColors: {
         primary: '#2563eb',
@@ -15,64 +15,375 @@ const CONFIG = {
         success: '#10b981',
         warning: '#f59e0b',
         danger: '#ef4444'
-    },
-    folders: [
-        { id: 'estrategia1', name: 'Estrategia Scalping', path: 'estrategia1/', status: 'active' },
-        { id: 'estrategia2', name: 'Estrategia Swing', path: 'estrategia2/', status: 'testing' }
-    ]
+    }
 };
 
-// Utilidades y funciones auxiliares
-const Utils = {
-    // Formatear números con separadores de miles y decimales
-    formatNumber: (num, decimals = 2) => {
-        return new Intl.NumberFormat('es-ES', {
-            minimumFractionDigits: decimals,
-            maximumFractionDigits: decimals
-        }).format(num);
-    },
+// Clase principal de la aplicación
+class TradingHubApp {
+    constructor() {
+        this.domManager = null;
+        this.portfolioCalculator = null;
+        this.strategies = [];
+        this.folders = [];
+        this.updateInterval = null;
+        this.init();
+    }
 
-    // Formatear porcentajes
-    formatPercentage: (num, decimals = 1) => {
-        const symbol = num >= 0 ? '+' : '';
-        return `${symbol}${num.toFixed(decimals)}%`;
-    },
-
-    // Generar color basado en rendimiento
-    getPerformanceColor: (value) => {
-        if (value > 0) return CONFIG.chartColors.success;
-        if (value < 0) return CONFIG.chartColors.danger;
-        return CONFIG.chartColors.warning;
-    },
-
-    // Animar contadores
-    animateCounter: (element, target, duration = 1000) => {
-        const start = 0;
-        const increment = target / (duration / 16);
-        let current = start;
-        
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-                current = target;
-                clearInterval(timer);
-            }
-            element.textContent = Math.floor(current);
-        }, 16);
-    },
-
-    // Mostrar/ocultar overlay de carga
-    toggleLoading: (show) => {
-        const overlay = document.getElementById('loadingOverlay');
-        if (show) {
-            overlay.classList.add('active');
-        } else {
-            overlay.classList.remove('active');
+    /**
+     * Inicializar aplicación
+     */
+    async init() {
+        try {
+            console.log(`Trading Hub v${APP_CONFIG.version} - Iniciando...`);
+            
+            // Mostrar loading
+            this.showLoading(true);
+            
+            // Inicializar managers
+            await this.initializeManagers();
+            
+            // Cargar estrategias
+            await this.loadStrategies();
+            
+            // Configurar actualizaciones automáticas
+            this.setupAutoUpdates();
+            
+            // Configurar eventos globales
+            this.setupGlobalEvents();
+            
+            // Ocultar loading
+            this.showLoading(false);
+            
+            console.log('Aplicación inicializada correctamente');
+            
+        } catch (error) {
+            console.error('Error al inicializar aplicación:', error);
+            this.showLoading(false);
+            this.showNotification('Error al inicializar la aplicación', 'error');
         }
-    },
+    }
 
-    // Debounce para optimizar eventos
-    debounce: (func, wait) => {
+    /**
+     * Inicializar managers
+     */
+    async initializeManagers() {
+        // Esperar a que DOM Manager esté disponible
+        await this.waitForDOMManager();
+        
+        // Inicializar Portfolio Calculator
+        this.portfolioCalculator = new window.PortfolioCalculator();
+        
+        // Asignar referencias globales
+        window.PortfolioManager = this;
+    }
+
+    /**
+     * Esperar a que DOM Manager esté disponible
+     */
+    waitForDOMManager() {
+        return new Promise((resolve) => {
+            const checkDOMManager = () => {
+                if (window.DOMManager) {
+                    this.domManager = window.DOMManager;
+                    resolve();
+                } else {
+                    setTimeout(checkDOMManager, 100);
+                }
+            };
+            checkDOMManager();
+        });
+    }
+
+    /**
+     * Cargar estrategias desde carpetas
+     */
+    async loadStrategies() {
+        try {
+            this.folders = await this.discoverStrategyFolders();
+            this.strategies = await this.loadStrategyData(this.folders);
+            
+            // Actualizar UI
+            this.updateUI();
+            
+        } catch (error) {
+            console.error('Error al cargar estrategias:', error);
+            this.strategies = this.getMockStrategies(); // Fallback
+            this.updateUI();
+        }
+    }
+
+    /**
+     * Descubrir carpetas de estrategias
+     */
+    async discoverStrategyFolders() {
+        // En un entorno real, esto se haría mediante una API o lectura de directorio
+        // Por ahora, simulamos la existencia de carpetas
+        const mockFolders = [
+            'Gann + Donchain',
+            'estrategia1',
+            'estrategia2'
+        ];
+        
+        // Verificar que las carpetas existen intentando acceder a sus archivos
+        const validFolders = [];
+        
+        for (const folder of mockFolders) {
+            try {
+                const response = await fetch(`./${folder}/index.html`);
+                if (response.ok) {
+                    validFolders.push(folder);
+                }
+            } catch (error) {
+                console.warn(`No se pudo acceder a la carpeta: ${folder}`);
+            }
+        }
+        
+        return validFolders;
+    }
+
+    /**
+     * Cargar datos de estrategias
+     */
+    async loadStrategyData(folders) {
+        const strategies = [];
+        
+        for (const folder of folders) {
+            try {
+                const response = await fetch(`./${folder}/index.html`);
+                const htmlContent = await response.text();
+                
+                const strategyData = this.domManager.extractStrategyData(htmlContent, folder);
+                strategies.push(strategyData);
+                
+            } catch (error) {
+                console.error(`Error al cargar datos de ${folder}:`, error);
+                // Crear datos mock para la estrategia
+                strategies.push(this.createMockStrategy(folder));
+            }
+        }
+        
+        return strategies;
+    }
+
+    /**
+     * Crear estrategia mock
+     */
+    createMockStrategy(folderName) {
+        const mockData = {
+            id: folderName.toLowerCase().replace(/\s+/g, '_'),
+            name: folderName,
+            symbol: 'XAUUSD',
+            period: 'M30 (2015.01.01 - 2025.12.04)',
+            totalNetProfit: `${(Math.random() * 50000 - 10000).toFixed(2)}`,
+            profitFactor: (Math.random() * 2 + 0.5).toFixed(2),
+            sharpeRatio: (Math.random() * 2 + 0.5).toFixed(2),
+            totalTrades: Math.floor(Math.random() * 2000 + 500),
+            winRate: Math.random() * 40 + 40, // 40-80%
+            drawdown: Math.random() * 20 + 5, // 5-25%
+            folder: folderName
+        };
+        
+        return mockData;
+    }
+
+    /**
+     * Obtener estrategias mock (fallback)
+     */
+    getMockStrategies() {
+        return [
+            this.createMockStrategy('Estrategia Scalping'),
+            this.createMockStrategy('Swing Trading Gold'),
+            this.createMockStrategy('Trend Following BTC'),
+            this.createMockStrategy('Mean Reversion SPY')
+        ];
+    }
+
+    /**
+     * Actualizar interfaz de usuario
+     */
+    updateUI() {
+        // Actualizar grid de estrategias
+        this.domManager.renderStrategiesGrid(this.strategies);
+        
+        // Actualizar contadores del header
+        this.domManager.updateHeaderStats(this.strategies.length, this.folders.length);
+        
+        // Calcular y actualizar métricas del portafolio
+        this.updatePortfolioMetrics();
+    }
+
+    /**
+     * Actualizar métricas del portafolio
+     */
+    updatePortfolioMetrics() {
+        const metrics = this.portfolioCalculator.calculatePortfolioMetrics(this.strategies);
+        const averagePerformance = this.portfolioCalculator.calculateAveragePerformance();
+        
+        // Actualizar métricas en el DOM
+        this.domManager.updatePerformanceMetrics({
+            avgReturn: averagePerformance.avgReturn,
+            maxDrawdown: this.portfolioCalculator.formatPercentage(metrics.totalDrawdown),
+            sharpeRatio: averagePerformance.avgSharpe,
+            winRate: averagePerformance.avgWinRate
+        });
+    }
+
+    /**
+     * Filtrar estrategias
+     */
+    filterStrategies(filter) {
+        const filteredStrategies = this.portfolioCalculator.filterStrategiesByPerformance(
+            this.strategies, 
+            filter
+        );
+        
+        this.domManager.renderStrategiesGrid(filteredStrategies);
+        
+        const filterText = filter === 'all' ? 'Todas' : 
+                          filter === 'high' ? 'Alto rendimiento' :
+                          filter === 'medium' ? 'Rendimiento medio' : 'Rendimiento bajo';
+        
+        this.domManager.showNotification(`Filtrando por: ${filterText}`, 'info');
+    }
+
+    /**
+     * Refrescar estrategias
+     */
+    async refreshStrategies() {
+        this.domManager.showNotification('Refrescando estrategias...', 'info');
+        
+        try {
+            await this.loadStrategies();
+            this.domManager.showNotification('Estrategias actualizadas correctamente', 'success');
+        } catch (error) {
+            console.error('Error al refrescar estrategias:', error);
+            this.domManager.showNotification('Error al refrescar estrategias', 'error');
+        }
+    }
+
+    /**
+     * Obtener estrategia por ID
+     */
+    getStrategyById(strategyId) {
+        return this.strategies.find(s => s.id === strategyId);
+    }
+
+    /**
+     * Configurar actualizaciones automáticas
+     */
+    setupAutoUpdates() {
+        this.updateInterval = setInterval(() => {
+            this.refreshStrategies();
+        }, APP_CONFIG.updateInterval);
+    }
+
+    /**
+     * Configurar eventos globales
+     */
+    setupGlobalEvents() {
+        // Eventos de teclado
+        document.addEventListener('keydown', (e) => {
+            this.handleKeyboardShortcuts(e);
+        });
+
+        // Eventos de redimensionamiento
+        window.addEventListener('resize', this.debounce(() => {
+            this.handleWindowResize();
+        }, 250));
+
+        // Eventos de visibilidad de página
+        document.addEventListener('visibilitychange', () => {
+            this.handleVisibilityChange();
+        });
+    }
+
+    /**
+     * Manejar atajos de teclado
+     */
+    handleKeyboardShortcuts(e) {
+        if (e.ctrlKey || e.metaKey) {
+            switch (e.key) {
+                case 'r':
+                    e.preventDefault();
+                    this.refreshStrategies();
+                    break;
+                case 'f':
+                    e.preventDefault();
+                    document.getElementById('performanceFilter').focus();
+                    break;
+            }
+        }
+
+        if (e.key === 'Escape') {
+            this.domManager.clearStrategiesGrid();
+            this.updateUI();
+        }
+    }
+
+    /**
+     * Manejar cambio de tamaño de ventana
+     */
+    handleWindowResize() {
+        // Actualizar gráficos si existen
+        if (window.ChartManager && window.ChartManager.heroChart) {
+            window.ChartManager.heroChart.resize();
+        }
+    }
+
+    /**
+     * Manejar cambio de visibilidad de página
+     */
+    handleVisibilityChange() {
+        if (document.hidden) {
+            // Pausar actualizaciones cuando la página no está visible
+            this.pauseAutoUpdates();
+        } else {
+            // Reanudar actualizaciones cuando la página vuelve a estar visible
+            this.resumeAutoUpdates();
+        }
+    }
+
+    /**
+     * Pausar actualizaciones automáticas
+     */
+    pauseAutoUpdates() {
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
+    }
+
+    /**
+     * Reanudar actualizaciones automáticas
+     */
+    resumeAutoUpdates() {
+        if (!this.updateInterval) {
+            this.setupAutoUpdates();
+        }
+    }
+
+    /**
+     * Mostrar/ocultar loading
+     */
+    showLoading(show) {
+        if (this.domManager) {
+            this.domManager.toggleLoading(show);
+        }
+    }
+
+    /**
+     * Mostrar notificación
+     */
+    showNotification(message, type = 'info') {
+        if (this.domManager) {
+            this.domManager.showNotification(message, type);
+        }
+    }
+
+    /**
+     * Función debounce para optimizar eventos
+     */
+    debounce(func, wait) {
         let timeout;
         return function executedFunction(...args) {
             const later = () => {
@@ -82,453 +393,149 @@ const Utils = {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
-    },
-
-    // Generar datos mock para demostración
-    generateMockData: () => {
-        const strategies = [
-            {
-                id: 'scalping-eurusd',
-                name: 'Scalping EUR/USD',
-                subtitle: 'Operaciones intradía con EUR/USD',
-                status: 'active',
-                return: 15.3,
-                drawdown: -5.2,
-                sharpe: 1.67,
-                winRate: 72,
-                trades: 145,
-                folder: 'estrategia1'
-            },
-            {
-                id: 'swing-gold',
-                name: 'Swing Trading Gold',
-                subtitle: 'Posiciones medianas plazo en oro',
-                status: 'testing',
-                return: 8.7,
-                drawdown: -12.1,
-                sharpe: 1.23,
-                winRate: 58,
-                trades: 23,
-                folder: 'estrategia2'
-            },
-            {
-                id: 'trend-btc',
-                name: 'Trend Following BTC',
-                subtitle: 'Seguimiento de tendencias Bitcoin',
-                status: 'active',
-                return: 22.1,
-                drawdown: -18.5,
-                sharpe: 1.89,
-                winRate: 65,
-                trades: 67,
-                folder: 'estrategia1'
-            },
-            {
-                id: 'mean-reversion',
-                name: 'Mean Reversion SPY',
-                subtitle: 'Reversión a la media en SPY',
-                status: 'inactive',
-                return: -2.3,
-                drawdown: -15.8,
-                sharpe: 0.45,
-                winRate: 42,
-                trades: 89,
-                folder: 'estrategia2'
-            }
-        ];
-        return strategies;
     }
-};
 
-// Gestión de datos y estado de la aplicación
-const DataManager = {
-    strategies: [],
-    folders: CONFIG.folders,
-    
-    // Inicializar datos
-    init: async () => {
-        try {
-            Utils.toggleLoading(true);
-            
-            // Simular carga de datos
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            DataManager.strategies = Utils.generateMockData();
-            DataManager.updateUI();
-            
-            Utils.toggleLoading(false);
-        } catch (error) {
-            console.error('Error al inicializar datos:', error);
-            Utils.toggleLoading(false);
-        }
-    },
+    /**
+     * Generar reporte completo del portafolio
+     */
+    generateFullReport() {
+        const portfolioReport = this.portfolioCalculator.generatePortfolioReport(this.strategies);
+        const diversification = this.portfolioCalculator.calculateDiversification();
+        const allocations = this.portfolioCalculator.optimizeCapitalAllocation();
 
-    // Actualizar interfaz con datos
-    updateUI: () => {
-        const totalStrategies = DataManager.strategies.length;
-        const totalFolders = DataManager.folders.length;
-        
-        // Actualizar contadores del header
-        Utils.animateCounter(document.getElementById('totalStrategies'), totalStrategies);
-        Utils.animateCounter(document.getElementById('totalFolders'), totalFolders);
-        
-        // Renderizar grid de estrategias
-        UIManager.renderStrategiesGrid(DataManager.strategies);
-        
-        // Actualizar gráfico del hero
-        ChartManager.updateHeroChart();
-    },
+        return {
+            timestamp: new Date().toISOString(),
+            version: APP_CONFIG.version,
+            portfolioSummary: portfolioReport,
+            diversification: diversification,
+            capitalAllocation: allocations,
+            strategies: this.strategies.map(s => ({
+                name: s.name,
+                symbol: s.symbol,
+                return: s.totalNetProfit,
+                sharpeRatio: s.sharpeRatio,
+                winRate: s.winRate,
+                drawdown: s.drawdown
+            }))
+        };
+    }
 
-    // Filtrar estrategias
-    filterStrategies: (filter) => {
-        let filtered = DataManager.strategies;
+    /**
+     * Descargar reporte como JSON
+     */
+    downloadReport() {
+        const report = this.generateFullReport();
+        const dataStr = JSON.stringify(report, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
         
-        switch (filter) {
-            case 'high':
-                filtered = DataManager.strategies.filter(s => s.return > 10);
-                break;
-            case 'medium':
-                filtered = DataManager.strategies.filter(s => s.return >= 0 && s.return <= 10);
-                break;
-            case 'low':
-                filtered = DataManager.strategies.filter(s => s.return < 0);
-                break;
-            default:
-                filtered = DataManager.strategies;
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = `portfolio_report_${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+    }
+
+    /**
+     * Limpiar recursos
+     */
+    destroy() {
+        this.pauseAutoUpdates();
+        
+        if (this.domManager) {
+            this.domManager.clearStrategiesGrid();
         }
         
-        UIManager.renderStrategiesGrid(filtered);
-    },
-
-    // Redirigir a estrategia específica
-    navigateToStrategy: (folderPath) => {
-        window.location.href = folderPath;
+        this.strategies = [];
+        this.folders = [];
     }
-};
+}
 
-// Gestión de la interfaz de usuario
-const UIManager = {
-    // Renderizar grid de estrategias
-    renderStrategiesGrid: (strategies) => {
-        const grid = document.getElementById('strategiesGrid');
-        
-        if (strategies.length === 0) {
-            grid.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-chart-line"></i>
-                    <h3>No se encontraron estrategias</h3>
-                    <p>Intenta ajustar los filtros o añadir nuevas estrategias</p>
-                </div>
-            `;
-            return;
-        }
-        
-        grid.innerHTML = strategies.map(strategy => `
-            <div class="strategy-card" data-id="${strategy.id}" data-folder="${strategy.folder}">
-                <div class="strategy-header">
-                    <div>
-                        <h4 class="strategy-title">${strategy.name}</h4>
-                        <p class="strategy-subtitle">${strategy.subtitle}</p>
-                    </div>
-                    <span class="strategy-status status-${strategy.status}">${strategy.status}</span>
-                </div>
-                
-                <div class="strategy-metrics">
-                    <div class="metric-item">
-                        <div class="metric-label">Retorno</div>
-                        <div class="metric-value ${strategy.return >= 0 ? 'positive' : 'negative'}">
-                            ${Utils.formatPercentage(strategy.return)}
-                        </div>
-                    </div>
-                    <div class="metric-item">
-                        <div class="metric-label">Drawdown</div>
-                        <div class="metric-value negative">
-                            ${Utils.formatPercentage(strategy.drawdown)}
-                        </div>
-                    </div>
-                    <div class="metric-item">
-                        <div class="metric-label">Sharpe</div>
-                        <div class="metric-value">${strategy.sharpe.toFixed(2)}</div>
-                    </div>
-                    <div class="metric-item">
-                        <div class="metric-label">Win Rate</div>
-                        <div class="metric-value">${strategy.winRate}%</div>
-                    </div>
-                </div>
-                
-                <div class="strategy-actions">
-                    <button class="btn btn-primary btn-small" onclick="DataManager.navigateToStrategy('${strategy.folder}/')">
-                        <i class="fas fa-external-link-alt"></i>
-                        Ver Detalles
-                    </button>
-                    <button class="btn btn-secondary btn-small" onclick="UIManager.showStrategyDetails('${strategy.id}')">
-                        <i class="fas fa-info-circle"></i>
-                        Info
-                    </button>
-                </div>
-            </div>
-        `).join('');
-        
-        // Añadir animaciones de entrada
-        const cards = grid.querySelectorAll('.strategy-card');
-        cards.forEach((card, index) => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            
-            setTimeout(() => {
-                card.style.transition = 'all 0.3s ease-out';
-                card.style.opacity = '1';
-                card.style.transform = 'translateY(0)';
-            }, index * 100);
-        });
-    },
-
-    // Mostrar detalles de estrategia
-    showStrategyDetails: (strategyId) => {
-        const strategy = DataManager.strategies.find(s => s.id === strategyId);
-        if (!strategy) return;
-        
-        // Crear modal de detalles (simplificado para este ejemplo)
-        alert(`Detalles de ${strategy.name}:\n\n` +
-              `Retorno: ${Utils.formatPercentage(strategy.return)}\n` +
-              `Drawdown: ${Utils.formatPercentage(strategy.drawdown)}\n` +
-              `Ratio Sharpe: ${strategy.sharpe.toFixed(2)}\n` +
-              `Win Rate: ${strategy.winRate}%\n` +
-              `Total Operaciones: ${strategy.trades}`);
-    },
-
-    // Actualizar métricas de rendimiento
-    updatePerformanceMetrics: () => {
-        const strategies = DataManager.strategies;
-        
-        if (strategies.length === 0) return;
-        
-        const avgReturn = strategies.reduce((sum, s) => sum + s.return, 0) / strategies.length;
-        const maxDrawdown = Math.min(...strategies.map(s => s.drawdown));
-        const avgSharpe = strategies.reduce((sum, s) => sum + s.sharpe, 0) / strategies.length;
-        const avgWinRate = strategies.reduce((sum, s) => sum + s.winRate, 0) / strategies.length;
-        
-        document.getElementById('avgReturn').textContent = Utils.formatPercentage(avgReturn);
-        document.getElementById('maxDrawdown').textContent = Utils.formatPercentage(maxDrawdown);
-        document.getElementById('sharpeRatio').textContent = avgSharpe.toFixed(2);
-        document.getElementById('winRate').textContent = Math.round(avgWinRate) + '%';
-    }
-};
-
-// Gestión de gráficos y visualizaciones
-const ChartManager = {
-    heroChart: null,
-    
-    // Inicializar gráfico del hero
-    initHeroChart: () => {
+// Función para inicializar Chart Manager (si se necesita)
+class ChartManager {
+    static initHeroChart() {
         const ctx = document.getElementById('heroChart');
         if (!ctx) return;
-        
-        // Datos mock para el gráfico
+
+        // Implementación básica del gráfico del hero
         const data = {
             labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
             datasets: [{
                 label: 'Retorno Acumulado',
                 data: [0, 2.5, 5.1, 8.3, 12.1, 15.8],
-                borderColor: CONFIG.chartColors.primary,
-                backgroundColor: CONFIG.chartColors.primary + '20',
+                borderColor: APP_CONFIG.chartColors.primary,
+                backgroundColor: APP_CONFIG.chartColors.primary + '20',
                 borderWidth: 2,
                 fill: true,
-                tension: 0.4,
-                pointBackgroundColor: CONFIG.chartColors.primary,
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6
+                tension: 0.4
             }]
         };
-        
+
         const config = {
             type: 'line',
             data: data,
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(30, 41, 59, 0.9)',
-                        titleColor: '#f8fafc',
-                        bodyColor: '#cbd5e1',
-                        borderColor: CONFIG.chartColors.primary,
-                        borderWidth: 1,
-                        cornerRadius: 8,
-                        displayColors: false,
-                        callbacks: {
-                            label: (context) => {
-                                return `Retorno: ${Utils.formatPercentage(context.parsed.y)}`;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        display: false
-                    },
-                    y: {
-                        display: false
-                    }
-                },
-                elements: {
-                    point: {
-                        hoverBackgroundColor: CONFIG.chartColors.primary
-                    }
-                },
-                interaction: {
-                    intersect: false,
-                    mode: 'index'
+                plugins: { legend: { display: false } },
+                scales: { x: { display: false }, y: { display: false } }
+            }
+        };
+
+        window.heroChart = new Chart(ctx, config);
+    }
+
+    static updateHeroChart() {
+        if (window.heroChart) {
+            const newData = Array.from({length: 6}, () => Math.random() * 20 - 5);
+            window.heroChart.data.datasets[0].data = newData;
+            window.heroChart.update('active');
+        }
+    }
+}
+
+// Inicializar aplicación cuando el DOM esté listo
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+        // Esperar a que todos los scripts estén cargados
+        const checkScripts = () => {
+            if (window.DOMManager && window.PortfolioCalculator) {
+                window.TradingHub = new TradingHubApp();
+                
+                // Inicializar Chart Manager si Chart.js está disponible
+                if (typeof Chart !== 'undefined') {
+                    ChartManager.initHeroChart();
                 }
+            } else {
+                setTimeout(checkScripts, 100);
             }
         };
         
-        ChartManager.heroChart = new Chart(ctx, config);
-    },
-    
-    // Actualizar gráfico del hero
-    updateHeroChart: () => {
-        if (!ChartManager.heroChart) {
-            ChartManager.initHeroChart();
-            return;
+        checkScripts();
+    });
+
+    // Manejo de errores global
+    window.addEventListener('error', (e) => {
+        console.error('Error no capturado:', e.error);
+        if (window.TradingHub) {
+            window.TradingHub.showNotification('Error: ' + e.message, 'error');
         }
-        
-        // Simular actualización de datos
-        const newData = Array.from({length: 6}, () => Math.random() * 20 - 5);
-        ChartManager.heroChart.data.datasets[0].data = newData;
-        ChartManager.heroChart.update('active');
-    }
-};
+    });
 
-// Gestión de eventos y interacciones
-const EventManager = {
-    // Inicializar todos los event listeners
-    init: () => {
-        // Botón de explorar estrategias
-        document.getElementById('exploreBtn')?.addEventListener('click', () => {
-            document.getElementById('strategiesGrid').scrollIntoView({ 
-                behavior: 'smooth' 
-            });
-        });
-        
-        // Botón de añadir nueva estrategia
-        document.getElementById('addStrategyBtn')?.addEventListener('click', () => {
-            UIManager.showAddStrategyModal();
-        });
-        
-        // Filtro de rendimiento
-        document.getElementById('performanceFilter')?.addEventListener('change', (e) => {
-            DataManager.filterStrategies(e.target.value);
-        });
-        
-        // Botón de refrescar
-        document.getElementById('refreshBtn')?.addEventListener('click', () => {
-            EventManager.handleRefresh();
-        });
-        
-        // Eventos de teclado
-        document.addEventListener('keydown', EventManager.handleKeyboard);
-        
-        // Eventos de redimensionamiento
-        window.addEventListener('resize', Utils.debounce(() => {
-            ChartManager.heroChart?.resize();
-        }, 250));
-    },
-    
-    // Manejar refresco de datos
-    handleRefresh: () => {
-        const refreshBtn = document.getElementById('refreshBtn');
-        const icon = refreshBtn.querySelector('i');
-        
-        // Animar icono de refresco
-        icon.style.transition = 'transform 0.5s ease';
-        icon.style.transform = 'rotate(360deg)';
-        
-        // Recargar datos
-        DataManager.init().then(() => {
-            setTimeout(() => {
-                icon.style.transform = 'rotate(0deg)';
-            }, 500);
-        });
-    },
-    
-    // Manejar eventos de teclado
-    handleKeyboard: (e) => {
-        // Atajos de teclado
-        if (e.ctrlKey || e.metaKey) {
-            switch (e.key) {
-                case 'r':
-                    e.preventDefault();
-                    EventManager.handleRefresh();
-                    break;
-                case 'n':
-                    e.preventDefault();
-                    UIManager.showAddStrategyModal();
-                    break;
-            }
+    // Manejo de errores de recursos
+    window.addEventListener('error', (e) => {
+        if (e.target.tagName === 'SCRIPT') {
+            console.error('Error al cargar script:', e.target.src);
         }
-        
-        // Escape para cerrar modales
-        if (e.key === 'Escape') {
-            UIManager.closeModals();
+    }, true);
+
+    // Limpiar recursos al salir
+    window.addEventListener('beforeunload', () => {
+        if (window.TradingHub) {
+            window.TradingHub.destroy();
         }
-    }
-};
-
-// Funciones adicionales de UI
-UIManager.showAddStrategyModal = () => {
-    alert('Función de añadir nueva estrategia - En desarrollo\n\n' +
-          'Esta función permitirá:\n' +
-          '• Crear nuevas carpetas de estrategias\n' +
-          '• Configurar parámetros de trading\n' +
-          '• Importar datos históricos\n' +
-          '• Definir reglas de entrada/salida');
-};
-
-UIManager.closeModals = () => {
-    // Cerrar cualquier modal abierto
-    console.log('Cerrando modales...');
-};
-
-// Inicialización de la aplicación
-document.addEventListener('DOMContentLoaded', () => {
-    console.log(`Trading Strategy Hub v${CONFIG.version} - Iniciando...`);
-    
-    // Inicializar componentes
-    EventManager.init();
-    DataManager.init();
-    
-    // Actualizar métricas de rendimiento
-    setTimeout(() => {
-        UIManager.updatePerformanceMetrics();
-    }, 1500);
-    
-    // Configurar actualizaciones periódicas
-    setInterval(() => {
-        DataManager.updateUI();
-        UIManager.updatePerformanceMetrics();
-    }, CONFIG.updateInterval);
-    
-    console.log('Aplicación inicializada correctamente');
-});
-
-// Manejo de errores global
-window.addEventListener('error', (e) => {
-    console.error('Error no capturado:', e.error);
-    Utils.toggleLoading(false);
-});
+    });
+}
 
 // Exportar para uso en otros módulos
-window.TradingHub = {
-    CONFIG,
-    Utils,
-    DataManager,
-    UIManager,
-    ChartManager,
-    EventManager
-};
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { TradingHubApp, APP_CONFIG };
+}
