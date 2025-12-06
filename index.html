@@ -3,27 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading Strategy Hub</title>
-    <link rel="stylesheet" href="css/main.css">
-    <script type="module" src="js/main.js" defer></script>
+    <title>Trading Strategy Hub - Recopilación de Estrategias</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <header class="header">
-        <h1 class="header__title">📈 Trading Strategy Hub</h1>
-        <p class="header__subtitle">Repositorio de resultados de estrategias</p>
-    </header>
+    <div class="container">
+        <!-- Header Section -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-chart-line"></i>
+                    <h1>Trading Strategy Hub</h1>
+                </div>
+                <div class="header-stats">
+                    <div class="stat-item">
+                        <span class="stat-number" id="totalStrategies">0</span>
+                        <span class="stat-label">Estrategias</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="totalFolders">0</span>
+                        <span class="stat-label">Carpetas</span>
+                    </div>
+                </div>
+            </div>
+        </header>
 
-    <main class="container">
-        <section class="strategies-section">
-            <h2 class="section__title">Estrategias Disponibles</h2>
-            <div id="strategies-container" class="strategies-grid">
-                <!-- Generado dinámicamente por JavaScript -->
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content">
+                <h2 class="hero-title">Recopilación de Estrategias de Trading</h2>
+                <p class="hero-subtitle">Explora y analiza diferentes estrategias de trading con datos históricos y resultados en tiempo real</p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary" id="exploreBtn">
+                        <i class="fas fa-rocket"></i>
+                        Explorar Estrategias
+                    </button>
+                    <button class="btn btn-secondary" id="addStrategyBtn">
+                        <i class="fas fa-plus"></i>
+                        Añadir Nueva
+                    </button>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="chart-preview">
+                    <canvas id="heroChart"></canvas>
+                </div>
             </div>
         </section>
-    </main>
 
-    <footer class="footer">
-        <p>&copy; <span id="current-year"></span> Trading Strategy Hub</p>
-    </footer>
+        <!-- Strategy Grid -->
+        <section class="strategies-section">
+            <div class="section-header">
+                <h3>Estrategias Disponibles</h3>
+                <div class="filter-controls">
+                    <select class="filter-select" id="performanceFilter">
+                        <option value="all">Todas las estrategias</option>
+                        <option value="high">Alto rendimiento</option>
+                        <option value="medium">Rendimiento medio</option>
+                        <option value="low">Rendimiento bajo</option>
+                    </select>
+                    <button class="btn-icon" id="refreshBtn">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="strategies-grid" id="strategiesGrid">
+                <!-- Las tarjetas de estrategias se generarán dinámicamente -->
+            </div>
+        </section>
+
+        <!-- Performance Overview -->
+        <section class="performance-section">
+            <h3>Visión General del Rendimiento</h3>
+            <div class="performance-grid">
+                <div class="performance-card">
+                    <h4>Retorno Promedio</h4>
+                    <div class="metric">
+                        <span class="metric-value" id="avgReturn">+12.5%</span>
+                        <span class="metric-change positive">+2.3%</span>
+                    </div>
+                </div>
+                <div class="performance-card">
+                    <h4>Drawdown Máximo</h4>
+                    <div class="metric">
+                        <span class="metric-value" id="maxDrawdown">-8.2%</span>
+                        <span class="metric-change negative">-1.1%</span>
+                    </div>
+                </div>
+                <div class="performance-card">
+                    <h4>Ratio Sharpe</h4>
+                    <div class="metric">
+                        <span class="metric-value" id="sharpeRatio">1.45</span>
+                        <span class="metric-change positive">+0.15</span>
+                    </div>
+                </div>
+                <div class="performance-card">
+                    <h4>Win Rate</h4>
+                    <div class="metric">
+                        <span class="metric-value" id="winRate">68%</span>
+                        <span class="metric-change positive">+3%</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>&copy; 2024 Trading Strategy Hub. Todos los derechos reservados.</p>
+                <div class="footer-links">
+                    <a href="#" class="footer-link">Documentación</a>
+                    <a href="#" class="footer-link">API</a>
+                    <a href="#" class="footer-link">Soporte</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Cargando estrategias...</p>
+        </div>
+    </div>
+
+    <!-- Scripts al final del body -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.birds.min.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
