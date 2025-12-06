@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estrategia Scalping - Trading Strategy Hub</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="breadcrumb">
+            <a href="../index.html" class="breadcrumb-link">
+                <i class="fas fa-home"></i>
+                Inicio
+            </a>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-current">Estrategia Scalping</span>
+        </nav>
+
+        <!-- Header -->
+        <header class="strategy-header">
+            <div class="strategy-info">
+                <h1>Estrategia Scalping EUR/USD</h1>
+                <p class="strategy-description">Operaciones intradía de alta frecuencia en EUR/USD con objetivos de 5-15 pips</p>
+                <div class="strategy-tags">
+                    <span class="tag tag-active">Activa</span>
+                    <span class="tag tag-forex">Forex</span>
+                    <span class="tag tag-scalping">Scalping</span>
+                </div>
+            </div>
+            <div class="strategy-actions">
+                <button class="btn btn-primary" id="startStrategy">
+                    <i class="fas fa-play"></i>
+                    Iniciar
+                </button>
+                <button class="btn btn-secondary" id="pauseStrategy">
+                    <i class="fas fa-pause"></i>
+                    Pausar
+                </button>
+                <button class="btn btn-danger" id="stopStrategy">
+                    <i class="fas fa-stop"></i>
+                    Detener
+                </button>
+            </div>
+        </header>
+
+        <!-- Performance Cards -->
+        <section class="performance-overview">
+            <div class="performance-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Retorno Mensual</h3>
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="metric-value positive">+15.3%</div>
+                    <div class="metric-change">+2.1% vs mes anterior</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Drawdown Máximo</h3>
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <div class="metric-value negative">-5.2%</div>
+                    <div class="metric-change">-0.8% vs mes anterior</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Ratio Sharpe</h3>
+                        <i class="fas fa-balance-scale"></i>
+                    </div>
+                    <div class="metric-value">1.67</div>
+                    <div class="metric-change">+0.15 vs mes anterior</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Operaciones</h3>
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <div class="metric-value">145</div>
+                    <div class="metric-change">+23 vs mes anterior</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section class="charts-section">
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Evolución del Capital</h3>
+                        <div class="chart-controls">
+                            <button class="btn-chart" data-period="1D">1D</button>
+                            <button class="btn-chart active" data-period="1W">1W</button>
+                            <button class="btn-chart" data-period="1M">1M</button>
+                            <button class="btn-chart" data-period="3M">3M</button>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="equityChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>Distribución de Operaciones</h3>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Strategy Parameters -->
+        <section class="parameters-section">
+            <h3>Parámetros de la Estrategia</h3>
+            <div class="parameters-grid">
+                <div class="parameter-group">
+                    <h4>Configuración General</h4>
+                    <div class="parameter-item">
+                        <label>Par de Divisas:</label>
+                        <span class="parameter-value">EUR/USD</span>
+                    </div>
+                    <div class="parameter-item">
+                        <label>Timeframe:</label>
+                        <span class="parameter-value">5 minutos</span>
+                    </div>
+                    <div class="parameter-item">
+                        <label>Lotaje Base:</label>
+                        <span class="parameter-value">0.1 lotes</span>
+                    </div>
+                    <div class="parameter-item">
+                        <label>Apalancamiento:</label>
+                        <span class="parameter-value">1:100</span>
+                    </div>
+                </div>
+                
+                <div class="parameter-group">
+                    <h4>Señales de Entrada</h4>
+                    <div class="parameter-item">
+                        <label>EMA Rápida:</label>
+                        <span class="parameter-value">9 períodos</span>
+                    </div>
+                    <div class="parameter-item">
+                        <label>EMA Lenta:</label>
+                        <span class="parameter-value">21 períodos</span>
+                    </div>
+                    <div class="parameter-item">
+                        <label>RSI Períodos:</label>
+                        <span class="parameter-value">14</span>
+                    </div>
+                    <div class="parameter-item">
+                        <label>RSI Umbral:</label>
+                        <span class="parameter-value">30 / 70</span>
+                    </div>
+                </div>
+                
+                <div class="parameter-group">
+                    <h4>Gestión de Riesgo</h4>
+                    <div class="parameter-item">
+                        <label>Stop Loss:</label>
+                        <span class="parameter-value">15 pips</span>
+                    </div>
+                    <div class="parameter-item">
+                        <label>Take Profit:</label>
+                        <span class="parameter-value">10 pips</span>
+                    </div>
+                    <div class="parameter-item">
+                        <label>Riesgo por Operación:</label>
+                        <span class="parameter-value">2%</span>
+                    </div>
+                    <div class="parameter-item">
+                        <label>Máximo Drawdown:</label>
+                        <span class="parameter-value">20%</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recent Trades -->
+        <section class="trades-section">
+            <div class="section-header">
+                <h3>Operaciones Recientes</h3>
+                <button class="btn btn-secondary" id="refreshTrades">
+                    <i class="fas fa-sync-alt"></i>
+                    Refrescar
+                </button>
+            </div>
+            
+            <div class="trades-table-container">
+                <table class="trades-table" id="tradesTable">
+                    <thead>
+                        <tr>
+                            <th>Fecha/Hora</th>
+                            <th>Tipo</th>
+                            <th>Precio Entrada</th>
+                            <th>Precio Salida</th>
+                            <th>Lotes</th>
+                            <th>Pips</th>
+                            <th>Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tradesTableBody">
+                        <!-- Las filas se generarán dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Back Button -->
+        <div class="back-section">
+            <a href="../index.html" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                Volver al Inicio
+            </a>
+        </div>
+    </div>
+
+    <!-- Scripts al final del body -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="strategy.js"></script>
+</body>
+</html>
